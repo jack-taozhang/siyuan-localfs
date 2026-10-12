@@ -76,19 +76,37 @@ export function pathParts(p) {
 
 export class FileView {
   /**
-   * @param {{plugin:object, container:HTMLElement, bare?:boolean}} opts
+   * @param {{plugin:object, container:HTMLElement, bare?:boolean|"fv"}} opts
    *        container —— 内容渲染进哪儿（浮层的 body / 页签的 body）
-   *        bare      —— 「只要内容、不要外壳」：
-   *                     · 文件预览 → 藏掉它自己的左侧文件树 + 顶部条（注入 CSS）
-   *                     · CAD      → 藏掉顶部工具栏 + 底部状态栏（注入 CSS）
-   *                     · Office   → URL 上带 bare=1，由宿主页关掉 toolbar/header
-   *                     页签里用（需求 #7）；浮层里保持完整外壳。
+   *        bare      —— 「只要内容、不要外壳」，**三态**（见构造函数里的说明）：
+   *                     · `true` → 全净化：文件预览藏外壳、CAD 藏工具栏、Office 走 bare=1
+   *                     · `"fv"` → 只净化 file-viewer（页签用，需求 #7 / 需求 3.1）
+   *                     · 省略   → 不净化（浮层保持完整外壳）
    */
   constructor(opts) {
     const o = opts || {};
     this.plugin = opts && o.plugin;
     this.container = o.container;
-    this.bare = !!(o && o.bare);
+    /**
+     * ★★ bare 是**三态**，不能用 `!!` 归一化 ★★
+     *
+     *   `true`  → 全净化（嵌入块：CAD 藏工具栏、file-viewer 藏外壳、Office 走 bare=1）
+     *   `"fv"`  → 只净化 file-viewer（页签：CAD / Office 保留完整界面）
+     *   falsy   → 不净化（浮层）
+     *
+     * ★ 这里踩过一个**静默**的坑（2026-10-12 才查出来）★
+     *   原来写的是 `this.bare = !!(o && o.bare)` —— `!!"fv"` 等于 `true`，
+     *   于是页签被当成"全净化"：下面 `full = this.bare === true` 成立，
+     *   CAD 也拿到 `cad-bare` 去注入样式。
+     *   后果与宿主的同源性有关，**两端表现相反**：
+     *     · 同源（NAS 网页版）⇒ 注入成功 ⇒ 页签里 CAD 工具条被藏掉
+     *     · 跨源（桌面客户端）⇒ 注入被浏览器静默丢弃 ⇒ 工具条又冒出来
+     *   也就是"同一份代码、两端口径不同"，而且哪端"看着对"纯属巧合。
+     *   2026-10-09 那次「页签保留完整工具栏」的修复就是被这一行吃掉的。
+     *   ⇒ 保留原值，只把 undefined/null 归成 false。
+     */
+    const bare = o && o.bare;
+    this.bare = bare === undefined || bare === null ? false : bare;
     this.item = null;
     this.mode = "view";
     this.destroyed = false;
