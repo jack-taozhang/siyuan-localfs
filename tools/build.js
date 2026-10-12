@@ -392,6 +392,34 @@ function selfCheck(outDir, bundleCode) {
     problems.push("i18n 自检失败: " + e.message);
   }
 
+  /*
+   * ★★ bare 必须是**三态**，不能被 `!!` 归一化 ★★
+   *
+   * 2026-10-12 的静默 bug：`this.bare = !!(o && o.bare)` 把页签传的 `"fv"`
+   * 压成了 `true`，于是 `full === true` 成立 ⇒ 页签也去净化 CAD ⇒
+   *   · 同源（NAS 网页版）注入成功 ⇒ 页签里 CAD 工具栏被藏
+   *   · 跨源（桌面客户端）注入被丢弃 ⇒ 工具栏又露出来
+   * 也就是"同一份代码、两端口径相反"，而且**不报任何错**。
+   *
+   * 这条断言跑在每次构建上，让那个 bug 无法再悄悄回来。
+   *
+   * ★ 必须查 `stripped`（注释已抹掉），不能查 `bundleCode` ★
+   *   因为上面那段**说明本身**就写着 `this.bare = !!(...)` 和 `bare: "fv"`，
+   *   拿未抹注释的文本去匹配，会自己把自己判成失败。
+   */
+  if (/this\.bare\s*=\s*!!/.test(stripped)) {
+    problems.push(
+      'bare 被 `!!` 归一化（this.bare = !!(...)）—— 页签的 bare:"fv" 会被压成 true，' +
+        "CAD 工具栏会被误藏（详见 src/fileview.js 构造函数的说明）"
+    );
+  }
+  if (!/bare\s*:\s*"fv"/.test(stripped)) {
+    problems.push('页签没有传 `bare: "fv"`（tabview.js）—— 页签口径会退化成"全净化"，与嵌入块长得一样');
+  }
+  if (!/===\s*"fv"/.test(stripped)) {
+    problems.push('缺少 `bare === "fv"` 判据（fileview.js 的 fvOnly）—— 页签三态已失效');
+  }
+
   return problems;
 }
 
