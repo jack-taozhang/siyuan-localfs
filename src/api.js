@@ -489,9 +489,21 @@ export function fileUrl(path, asAttachment) {
  *     （它的 server 注释原话：「把 /open?path=... 之类的路径交给前端路由」）。
  *     给 `/` 也曾能打开（前端自己读 location.search），但那不是正规入口。
  *   地址怎么选（一律走同源通道）见 channelUrl 的说明。
+ *
+ * ★ bare 参数：为什么只有内嵌才带 ★
+ *   内嵌块要"只有图纸、没有工具栏"。这活儿以前全靠宿主往 iframe 里
+ *   注入 CSS（purify.js），而**注入要求同源** —— 桌面客户端跨源，
+ *   浏览器把注入静默丢弃，工具栏就全冒出来了，而且不报任何错。
+ *   同源策略没有第三条路，所以真正的解法是让 CAD 应用**自己**认一个参数
+ *   来藏外壳（fnos-dwg-viewer 的 ?bare=1，见其 src/bare.ts）。
+ *   ⇒ 内嵌传 bare=1；「在浏览器中打开」传 false —— 新标签页里用户
+ *     反而可能想用图层/测量/导出，留着完整界面。
+ *   同源时两条路都生效（注入 + 自藏），互为双保险。
  */
-export function cadViewerUrl(path) {
-  const qs = new URLSearchParams({ path: path }).toString();
+export function cadViewerUrl(path, bare) {
+  const qsObj = { path: path };
+  if (bare) qsObj.bare = "1";
+  const qs = new URLSearchParams(qsObj).toString();
   return channelUrl(CAD_PREFIX, qs, CAD_OPEN_ROUTE)
       || (_base + CAD_PREFIX + CAD_OPEN_ROUTE + "?" + qs);
 }
