@@ -632,7 +632,8 @@ function renderTreeEmbed(spec, plugin) {
  * ★ 嵌入块一律 bare ★
  *   需求 #3/#4/#5：块里只显示**文件内容**，查看器自带的工具栏 / 菜单栏 / 文件树
  *   全部不显示（块本来就窄，工具栏会把内容挤成一条缝，还容易误点）。
- *   · CAD    → URL 不带额外参数；由 renderIframe 注入 CSS 藏 header/footer
+ *   · CAD    → URL 带 bare=1，**由应用自己藏外壳**；renderIframe 注入 CSS
+ *              作为同源场景下的双保险（跨源时注入无效，靠应用自己那份）
  *   · Office → URL 带 bare=1，宿主页关掉 toolbar/header（跨源，注不了样式）
  *   · 其余   → renderIframe 注入 CSS 藏 file-viewer 的 #sidebar/#topbar
  *
@@ -643,7 +644,8 @@ function renderTreeEmbed(spec, plugin) {
  */
 function resolveUrl(path, kind, plugin) {
   const renderer = rendererOf(kind);
-  if (renderer === RENDERER.CAD) return cadViewerUrl(path);
+  // ★ bare=1：跨源时宿主页注不进样式，只能让 CAD 应用自己藏（见 api.js 的说明）
+  if (renderer === RENDERER.CAD) return cadViewerUrl(path, true);
   if (renderer === RENDERER.OFFICE) {
     // ★ 嵌入块里的 Office 一律只读 view + bare=1（藏工具栏）★
     //   块里不该出现编辑入口（改了文件却看不到保存状态最危险），
