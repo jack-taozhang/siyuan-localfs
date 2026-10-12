@@ -2,7 +2,7 @@
   "name": "siyuan-localfs",
   "author": "zhangtao",
   "url": "https://github.com/jack-taozhang/SiyuanLocalFS",
-  "version": "1.12.11",
+  "version": "1.12.12",
   "minAppVersion": "3.0.0",
   "backends": [
     "windows",
